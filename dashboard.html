@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard | SecureAuth</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body onload="loadDashboard()">
+    <div class="container">
+        <div class="glass-card">
+            <h1>User Dashboard</h1>
+            <p class="subtitle">Your secure profile information</p>
+            
+            <div class="user-details">
+                <div class="detail-card">
+                    <div class="detail-label">Profile</div>
+                    <div class="detail-label" style="margin-top: 1rem; color: var(--primary-color);">Username</div>
+                    <div class="detail-value" id="user-name">Loading...</div>
+                    
+                    <div class="detail-label" style="margin-top: 1rem; color: var(--primary-color);">Email</div>
+                    <div class="detail-value" id="user-email">Loading...</div>
+                </div>
+
+                <div class="detail-card">
+                    <div class="detail-label">Security Credentials</div>
+                    <div class="detail-label" style="margin-top: 1rem; color: var(--secondary-color);">User ID</div>
+                    <div class="detail-value token-value" id="user-id">Loading...</div>
+                    
+                    <div class="detail-label" style="margin-top: 1rem; color: var(--secondary-color);">Session Token</div>
+                    <div class="detail-value token-value" id="user-token">Loading...</div>
+                </div>
+            </div>
+
+            <button onclick="logout()" class="btn" style="margin-top: 2rem; background: linear-gradient(135deg, #ef4444, #dc2626);">Log Out</button>
+        </div>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>

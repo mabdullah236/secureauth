@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sign Up | SecureAuth</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <div class="glass-card">
+            <h1>Create Account</h1>
+            <p class="subtitle">Join us today and get started</p>
+            
+            <form onsubmit="signup(event)">
+                <div class="form-group">
+                    <label for="username">Username</label>
+                    <input type="text" id="username" placeholder="johndoe" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="email">Email Address</label>
+                    <input type="email" id="email" placeholder="john@example.com" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <input type="password" id="password" placeholder="••••••••" required oninput="updatePasswordStrength(this.value)">
+                    <div class="password-strength-container">
+                        <div id="password-strength" class="password-strength"></div>
+                        <span id="strength-text"></span>
+                    </div>
+                </div>
+
+                <div id="error" class="error-message"></div>
+                
+                <button type="submit" class="btn">Sign Up</button>
+            </form>
+
+            <div class="link-text">
+                Already have an account? <a href="login.html">Log in</a>
+            </div>
+        </div>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>
