@@ -1,5 +1,4 @@
 // ================= SECURITY UTILITIES =================
-
 async function sha256(message) {
     const msgBuffer = new TextEncoder().encode(message);
     const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
@@ -7,7 +6,7 @@ async function sha256(message) {
     return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
-// Simple XSS sanitizer (basic but effective for demo apps)
+// Basic XSS sanitizer
 function sanitize(input) {
     return input
         .replace(/&/g, '&amp;')
@@ -18,16 +17,10 @@ function sanitize(input) {
 }
 
 // ================= MOCK BACKEND =================
-
 class MockBackend {
-    constructor() {
-        this.usersKey = 'users';
-    }
+    constructor() { this.usersKey = 'users'; }
 
-    getUsers() {
-        const users = localStorage.getItem(this.usersKey);
-        return users ? JSON.parse(users) : [];
-    }
+    getUsers() { return JSON.parse(localStorage.getItem(this.usersKey)) || []; }
 
     saveUser(user) {
         const users = this.getUsers();
@@ -35,21 +28,23 @@ class MockBackend {
         localStorage.setItem(this.usersKey, JSON.stringify(users));
     }
 
-    findUser(email) {
-        return this.getUsers().find(u => u.email === email);
+    updateUser(updatedUser) {
+        const users = this.getUsers().map(u =>
+            u.email === updatedUser.email ? updatedUser : u
+        );
+        localStorage.setItem(this.usersKey, JSON.stringify(users));
     }
+
+    findUser(email) { return this.getUsers().find(u => u.email === email); }
 
     async validateCredentials(email, password) {
         const user = this.findUser(email);
         if (!user) return null;
-
         const hashedPassword = await sha256(password);
         return user.password === hashedPassword ? user : null;
     }
 
-    generateToken() {
-        return crypto.randomUUID();
-    }
+    generateToken() { return crypto.randomUUID(); }
 
     checkPasswordStrength(password) {
         let strength = 0;
@@ -64,50 +59,46 @@ class MockBackend {
 const backend = new MockBackend();
 
 // ================= SESSION MANAGER =================
-
-const SESSION_DURATION = 60 * 60 * 1000; // 1 hour
+const SESSION_DURATION = 60 * 60 * 1000;
 
 const SessionManager = {
-    setSession: (user) => {
+    setSession(user) {
         const expiresAt = Date.now() + SESSION_DURATION;
-
         const sessionData = {
             id: user.id,
             username: user.username,
             email: user.email,
             token: user.token,
+            passwordHash: user.password,
             expiresAt
         };
-
         sessionStorage.setItem('currentUser', JSON.stringify(sessionData));
         document.cookie = `authToken=${user.token}; max-age=3600; path=/; SameSite=Strict`;
     },
 
-    getSession: () => {
+    getSession() {
         const session = sessionStorage.getItem('currentUser');
         if (!session) return null;
-
         const parsed = JSON.parse(session);
         if (Date.now() > parsed.expiresAt) {
-            SessionManager.clearSession();
+            this.clearSession();
             return null;
         }
         return parsed;
     },
 
-    clearSession: () => {
+    clearSession() {
         sessionStorage.removeItem('currentUser');
         document.cookie = 'authToken=; max-age=0; path=/';
     },
 
-    isLoggedIn: () => !!SessionManager.getSession()
+    isLoggedIn() { return !!this.getSession(); }
 };
 
 // ================= ROUTE PROTECTION =================
-
 function handleRedirects() {
-    const file = window.location.pathname.split('/').pop() || 'index.html';
-    const isDashboard = file === 'dashboard.html';
+    const page = window.location.pathname.split('/').pop() || 'index.html';
+    const isDashboard = page === 'dashboard.html';
 
     if (SessionManager.isLoggedIn()) {
         if (!isDashboard) window.location.replace('dashboard.html');
@@ -120,7 +111,6 @@ handleRedirects();
 window.addEventListener('pageshow', handleRedirects);
 
 // ================= PASSWORD STRENGTH =================
-
 function updatePasswordStrength(password) {
     const strength = backend.checkPasswordStrength(password);
     const meter = document.getElementById('password-strength');
@@ -153,32 +143,24 @@ function updatePasswordStrength(password) {
     }
 }
 
-// ================= AUTH FLOWS =================
-
-async function signup(event) {
-    event.preventDefault();
-
+// ================= AUTH =================
+async function signup(e) {
+    e.preventDefault();
     const username = sanitize(document.getElementById('username').value.trim());
     const email = sanitize(document.getElementById('email').value.trim());
     const password = document.getElementById('password').value;
     const errorEl = document.getElementById('error');
 
-    if (!username || !email || !password)
-        return showError(errorEl, 'All fields required');
-
-    if (backend.findUser(email))
-        return showError(errorEl, 'User already exists');
-
-    if (backend.checkPasswordStrength(password) < 2)
-        return showError(errorEl, 'Password too weak');
+    if (!username || !email || !password) return showError(errorEl, 'All fields required');
+    if (backend.findUser(email)) return showError(errorEl, 'User already exists');
+    if (backend.checkPasswordStrength(password) < 2) return showError(errorEl, 'Password too weak');
 
     const hashedPassword = await sha256(password);
     const token = await sha256(backend.generateToken());
 
     backend.saveUser({
         id: Date.now().toString(),
-        username,
-        email,
+        username, email,
         password: hashedPassword,
         token
     });
@@ -186,16 +168,17 @@ async function signup(event) {
     window.location.replace('login.html');
 }
 
-async function login(event) {
-    event.preventDefault();
-
+async function login(e) {
+    e.preventDefault();
     const email = sanitize(document.getElementById('email').value.trim());
     const password = document.getElementById('password').value;
     const errorEl = document.getElementById('error');
 
     const user = await backend.validateCredentials(email, password);
+    if (!user) return showError(errorEl, 'Invalid email or password');
 
-    if (!user) return showError(errorEl, 'Invalid credentials');
+    user.token = await sha256(backend.generateToken());
+    backend.updateUser(user);
 
     SessionManager.setSession(user);
     window.location.replace('dashboard.html');
@@ -206,65 +189,50 @@ function logout() {
     window.location.replace('login.html');
 }
 
+// ================= DASHBOARD =================
 function loadDashboard() {
-    const user = SessionManager.getSession();
-    if (!user) {
-        logout();
-        return;
-    }
+    const sessionUser = SessionManager.getSession();
+    if (!sessionUser) return logout();
 
-    const validUser = backend.findUser(user.email);
+    const backendUser = backend.findUser(sessionUser.email);
+    if (!backendUser ||
+        backendUser.token !== sessionUser.token ||
+        backendUser.id !== sessionUser.id ||
+        backendUser.username !== sessionUser.username ||
+        backendUser.password !== sessionUser.passwordHash
+    ) return logout();
 
-    // Initial backend validation
-    if (!validUser || validUser.token !== user.token) {
-        logout();
-        return;
-    }
+    document.getElementById('user-name').textContent = sessionUser.username;
+    document.getElementById('user-email').textContent = sessionUser.email;
+    document.getElementById('user-id').textContent = sessionUser.id;
+    document.getElementById('user-token').textContent = sessionUser.token;
 
-    // Render data safely
-    document.getElementById('user-name').textContent = user.username;
-    document.getElementById('user-email').textContent = user.email;
-    document.getElementById('user-id').textContent = user.id;
-    document.getElementById('user-token').textContent = user.token;
+    const originalSnapshot = JSON.stringify(sessionUser);
 
-    // 🔐 SNAPSHOT (original state)
-    const originalSession = JSON.stringify(user);
-
-    // 🕵️ REAL-TIME TAMPER WATCHER
     setInterval(() => {
-        const currentSession = SessionManager.getSession();
+        const current = SessionManager.getSession();
+        if (!current) return logout();
+        if (JSON.stringify(current) !== originalSnapshot) return logout();
 
-        // Session removed or expired
-        if (!currentSession) {
-            logout();
-            return;
-        }
-
-        // Client-side tamper detection
-        if (JSON.stringify(currentSession) !== originalSession) {
-            logout();
-            return;
-        }
-
-        // Backend token validation (extra safety)
-        const backendUser = backend.findUser(currentSession.email);
-        if (!backendUser || backendUser.token !== currentSession.token) {
-            logout();
-        }
-
+        const freshUser = backend.findUser(current.email);
+        if (!freshUser ||
+            freshUser.token !== current.token ||
+            freshUser.id !== current.id ||
+            freshUser.username !== current.username ||
+            freshUser.password !== current.passwordHash
+        ) logout();
     }, 1000);
 }
 
-
-
+// ================= HELPERS =================
 function showError(el, msg) {
     el.textContent = msg;
+    el.style.display = 'block';
     el.classList.add('shake');
     setTimeout(() => el.classList.remove('shake'), 400);
 }
 
-// ================= GLOBAL EXPORTS =================
-
+// ================= GLOBAL =================
 window.signup = signup;
 window.login = login;
 window.logout = logout;
