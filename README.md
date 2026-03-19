@@ -1,5 +1,8 @@
 # Secure Auth Frontend
 
+Visit site:
+        https://mabdullah236.github.io/secureauth/login.html
+
 A modern frontend authentication system built with HTML, CSS, and JavaScript.
 
 ## Features
@@ -14,7 +17,6 @@ A modern frontend authentication system built with HTML, CSS, and JavaScript.
 
 ## Security Notes
 This is a frontend-only demo project.  
-For production systems, backend validation is required.
 
 ## Author
 Muhammad Abdullah
